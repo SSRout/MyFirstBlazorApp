@@ -12,6 +12,6 @@ Post-Deployment Script Template
 if not exists (select * from dbo.Food)
 begin
     insert into dbo.Food(Title,[Description],Price)
-    values('spaghetti','a spaghetti',6),('pizza','a pizza',4.93),('hamburger','a hamburger',6.5),('sausages','a sausages',3,5);
+    values('spaghetti','a spaghetti',6),('pizza','a pizza',4.93),('hamburger','a hamburger',6.5),('sausages','a sausages',3.5);
 end
 

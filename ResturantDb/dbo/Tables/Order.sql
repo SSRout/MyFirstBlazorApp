@@ -5,5 +5,5 @@
     [OrderDate] DATETIME2 NOT NULL, 
     [FoodId] INT NOT NULL, 
     [Quantity] INT NOT NULL, 
-    [Price] MONEY NOT NULL
+    [Total] MONEY NOT NULL
 )
