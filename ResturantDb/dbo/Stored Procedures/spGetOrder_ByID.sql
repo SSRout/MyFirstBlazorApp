@@ -3,5 +3,5 @@
 AS
 Begin
     set nocount on;
-	SELECT Id, OrderName, OrderDate, FoodId, Quantity, Total from dbo.[Order] where id=@id
+	SELECT Id, OrderName, OrderDate, FoodId, Quantity, Total from dbo.[Order] where Id=@Id
 End
