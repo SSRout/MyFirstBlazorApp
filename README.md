@@ -3,7 +3,7 @@
 - For Database we will use SSDT insted of EF 
 - dapper for mapping
 - ResturantDb is ssdt
-- BlazorClient is a webassambly app use API for CRUD 
+- BlazorClient is a WebAssembly app use API for CRUD 
 
 | Project | References/Packages |
 | ------------- | ------------- |

@@ -36,12 +36,10 @@ namespace API
             services.AddSingleton<IDataAccess, SqlDb>();
             services.AddSingleton<IFoodData, FoodData>();
             services.AddSingleton<IOrderData, OrderData>();
-            services.AddCors(o =>
+            services.AddCors(c =>
             {
-                o.AddPolicy("AllowOrigin", builder => builder.AllowAnyOrigin()
-                 .AllowAnyMethod()
-                 .AllowAnyHeader());
-                });
+                c.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -57,7 +55,7 @@ namespace API
             app.UseRouting();
 
             app.UseAuthorization();
-
+            app.UseCors("AllowOrigin");
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
