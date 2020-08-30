@@ -1,0 +1,105 @@
+﻿@page   "/Order/Display/{Id:int}"
+@inject IFoodData  foodData
+@inject IOrderData orderData
+@using  BlazorServer.Models
+@inject NavigationManager navMgr
+<h3>Display</h3>
+@if (RecordNotFound)
+{
+    <h4>Record Not Found</h4>
+}
+else if (order is null)
+{
+    <h4>Order is Loading...</h4>
+}
+else
+{
+    <table class="table">
+        <tbody>
+            <tr>
+                <td><strong>Order Name</strong></td>
+                <td>@order.OrderName</td>
+            </tr>
+            <tr>
+                <td><strong>Order Date</strong></td>
+                <td>@order.OrderDate</td>
+            </tr>
+            <tr>
+                <td><strong>Total</strong></td>
+                <td>@string.Format("{0:C}", order.Total)</td>
+            </tr>
+            <tr>
+                <td><strong>Item  Orderd</strong></td>
+                <td>@ItemPurchased</td>
+            </tr>
+            <tr>
+                <td><strong>Quantity</strong></td>
+                <td>@order.Quantity</td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    @if (ConfirmDelete)
+                    {
+                        <button class="btn btn-outline-danger" @onclick="Delete">Coinfirm Delete Order</button>
+                        <button class="btn btn-secondary" @onclick="(()=>ConfirmDelete=false)">Cancel Delete Order</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-danger" @onclick="(()=>ConfirmDelete=true)">Delete Order</button>
+                    }
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <EditForm Model="@upModel" OnValidSubmit="Update">
+        <DataAnnotationsValidator />
+        <ValidationSummary Model="@upModel" />
+        <div class="form-group">
+            <label class="control-label">Order Name  </label>
+            <InputText @bind-Value="upModel.OrderName" class="form-control"></InputText>
+            <ValidationMessage For="@(()=>upModel.OrderName)" class="text-danger"></ValidationMessage>
+        </div>
+        <div class="form-group">
+            <input type="submit" class="btn btn-outline-info" value="Update Order" />
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    private OrderModel order;
+    private string ItemPurchased;
+    private bool ConfirmDelete = false;
+    private bool RecordNotFound = false;
+    private OrderUpdateModel upModel = new OrderUpdateModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        order = await orderData.GetOrderById(Id);
+        if (order != null)
+        {
+            var food = await foodData.GetFood();
+            ItemPurchased = food.Where(x => x.Id == order.FoodId).FirstOrDefault()?.Title;
+            upModel.Id = order.Id;
+            upModel.OrderName = order.OrderName;
+        }
+        else
+        {
+            RecordNotFound = true;
+        }
+    }
+
+    private async Task Update()
+    {
+        await orderData.UpdateOrderName(upModel.Id, upModel.OrderName);
+        order.OrderName = upModel.OrderName;
+    }
+
+    private async Task Delete()
+    {
+        await orderData.DeleteOrder(upModel.Id);
+        ConfirmDelete = false;
+        navMgr.NavigateTo($"Order/Create");
+    }
+}
