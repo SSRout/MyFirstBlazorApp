@@ -14,3 +14,8 @@
 |BlazorServer|DataLibrary|
 |BlazorClient|Microsoft.AspNetCore.Blazor.HttpClient from nuget|
 
+
+###### Thanks to Timothy Corey
+
+**✔️🍺 Happy Coding 👍😊**
+
