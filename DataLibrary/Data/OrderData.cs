@@ -1,9 +1,9 @@
-﻿using Dapper;
-using DataLibrary.Db;
-using DataLibrary.Models;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using Dapper;
+using DataLibrary.Db;
+using DataLibrary.Models;
 
 namespace DataLibrary.Data
 {

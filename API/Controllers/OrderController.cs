@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,7 +16,7 @@ namespace API.Controllers
     {
         private readonly IFoodData _foodData;
         private readonly IOrderData _OrderData;
-        public OrderController(IFoodData foodData,IOrderData orderData)
+        public OrderController(IFoodData foodData, IOrderData orderData)
         {
             _foodData = foodData;
             _OrderData = orderData;
@@ -56,7 +56,7 @@ namespace API.Controllers
             {
                 return NotFound();
             }
-            
+
         }
 
         [HttpPut]

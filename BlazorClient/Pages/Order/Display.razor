@@ -1,6 +1,8 @@
 ﻿@page "/Order/Display/{Id:int}"
+@using System.Threading
 @inject HttpClient Http
 @inject NavigationManager navMgr
+
 <h3>Display</h3>
 
 @if (string.IsNullOrWhiteSpace(errorString) == false)
@@ -8,9 +10,13 @@
     <h4>System Error</h4>
     <p>@errorString</p>
 }
-else if (orderInfo.Order is null)
+else if (IsLoading)
 {
-    <h4>Loading...</h4>
+    <p><em>Loading...</em></p>
+}
+else if (orderInfo?.Order is null)
+{
+    <h4>Order not found</h4>
 }
 else
 {
@@ -36,27 +42,34 @@ else
                 <td colspan="2">
                     @if (ConfirmDelete)
                     {
-                        <button class="btn btn-outline-danger" @onclick="Delete">Coinfirm Delete Order</button>
-                        <button class="btn btn-secondary" @onclick="(()=>ConfirmDelete=false)">Cancel Delete Order</button>
+                        <button class="btn btn-outline-danger" @onclick="Delete" disabled="@IsDeleting">
+                            @(IsDeleting ? "Deleting..." : "Confirm Delete Order")
+                        </button>
+                        <button class="btn btn-secondary" @onclick="(()=>ConfirmDelete=false)" disabled="@IsDeleting">Cancel Delete Order</button>
                     }
                     else
                     {
-                        <button class="btn btn-danger" @onclick="(()=>ConfirmDelete=true)">Delete Order</button>
+                        <button class="btn btn-danger" @onclick="(()=>ConfirmDelete=true)" disabled="@IsDeleting">Delete Order</button>
                     }
                 </td>
             </tr>
         </tbody>
     </table>
+
     <EditForm Model="@upModel" OnValidSubmit="Update">
         <DataAnnotationsValidator />
         <ValidationSummary Model="@upModel" />
         <div class="form-group">
-            <label class="control-label">Order Name  </label>
-            <InputText @bind-Value="upModel.OrderName" class="form-control"></InputText>
-            <ValidationMessage For="@(()=>upModel.OrderName)" class="text-danger"></ValidationMessage>
+            <label class="control-label">Order Name</label>
+            <InputText @bind-Value="upModel.OrderName" class="form-control" />
+            <ValidationMessage For="@(()=>upModel.OrderName)" class="text-danger" />
         </div>
         <div class="form-group">
-            <input type="submit" class="btn btn-outline-info" value="Update Order" />
+            <input type="submit" class="btn btn-outline-info" value="Update Order" disabled="@IsUpdating" />
+            @if (IsUpdating)
+            {
+                <span class="ml-2">Updating...</span>
+            }
         </div>
     </EditForm>
 }
@@ -64,50 +77,145 @@ else
 @code {
     [Parameter]
     public int Id { get; set; }
+
     private OrderResultModel orderInfo = new OrderResultModel();
     private OrderUpdateModel upModel = new OrderUpdateModel();
     private string errorString;
     private bool ConfirmDelete = false;
 
-    protected override async Task OnInitializedAsync()
+    private bool IsLoading = true;
+    private bool IsUpdating = false;
+    private bool IsDeleting = false;
+
+    private CancellationTokenSource _cts = new CancellationTokenSource();
+
+    protected override async Task OnParametersSetAsync()
     {
-        HttpResponseMessage response = await Http.GetAsync($"Order/{Id}");
-        if (response.IsSuccessStatusCode)
+        // Cancel any prior in-flight requests, create a fresh token for this load
+        _cts.Cancel();
+        _cts.Dispose();
+        _cts = new CancellationTokenSource();
+
+        await LoadOrderAsync(_cts.Token);
+    }
+
+    private async Task LoadOrderAsync(CancellationToken ct)
+    {
+        IsLoading = true;
+        errorString = null;
+
+        try
         {
-            orderInfo = await response.Content.ReadFromJsonAsync<OrderResultModel>();
-            upModel.Id = orderInfo.Order.Id;
-            upModel.OrderName = orderInfo.Order.OrderName;
+            using var response = await Http.GetAsync($"Order/{Id}", ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<OrderResultModel>(cancellationToken: ct);
+                if (result?.Order != null)
+                {
+                    orderInfo = result;
+                    upModel.Id = orderInfo.Order.Id;
+                    upModel.OrderName = orderInfo.Order.OrderName;
+                }
+                else
+                {
+                    orderInfo = new OrderResultModel();
+                    errorString = "Order not found.";
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                orderInfo = new OrderResultModel();
+                errorString = "Order not found (404).";
+            }
+            else
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                errorString = !string.IsNullOrWhiteSpace(content) ? content : response.ReasonPhrase;
+            }
         }
-        else
+        catch (OperationCanceledException)
         {
-            errorString = response.ReasonPhrase;
+            // ignore cancellation
+        }
+        catch (Exception ex)
+        {
+            errorString = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
     private async Task Update()
     {
+        if (IsUpdating) return;
+
+        IsUpdating = true;
+        errorString = null;
+
         try
         {
-            HttpResponseMessage response = await Http.PutAsJsonAsync("Order", upModel);
-            orderInfo.Order.OrderName = upModel.OrderName;
+            using var response = await Http.PutAsJsonAsync("Order", upModel);
+            if (response.IsSuccessStatusCode)
+            {
+                // Optimistically update UI
+                if (orderInfo?.Order != null)
+                {
+                    orderInfo.Order.OrderName = upModel.OrderName;
+                }
+            }
+            else
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                errorString = !string.IsNullOrWhiteSpace(content) ? content : response.ReasonPhrase;
+            }
         }
         catch (Exception ex)
         {
-
             errorString = ex.Message;
+        }
+        finally
+        {
+            IsUpdating = false;
         }
     }
 
     private async Task Delete()
     {
-        HttpResponseMessage response = await Http.DeleteAsync($"Order/{Id}");
-        if(response.IsSuccessStatusCode)
+        if (IsDeleting) return;
+
+        IsDeleting = true;
+        errorString = null;
+
+        try
         {
-            navMgr.NavigateTo($"Order/Create");
+            using var response = await Http.DeleteAsync($"Order/{Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                navMgr.NavigateTo($"Order/Create");
+            }
+            else
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                errorString = !string.IsNullOrWhiteSpace(content) ? content : response.ReasonPhrase;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            errorString = response.ReasonPhrase;
+            errorString = ex.Message;
         }
+        finally
+        {
+            IsDeleting = false;
+            ConfirmDelete = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
     }
 }
